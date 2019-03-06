@@ -1,9 +1,8 @@
-//package org.usfirst.frc.team3035.robot;
+package frc.robot;
 
 import org.opencv.video.KalmanFilter;
 
 import com.kauailabs.navx.frc.AHRS;
-
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
@@ -26,7 +25,7 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import org.usfirst.frc.team3035.*;
+//import org.usfirst.frc.team3035;
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions correspondin to each mode, as described in the IterativeRobot
@@ -45,8 +44,14 @@ public class Robot extends IterativeRobot implements PIDOutput {
 						// alliance
 	AHRS ahrs;
 
-	Spark LF, LB, RF, RB;
+	Victor LF, LB, RF, RB;
+	Victor intakeMotor;
+	Spark arm;
 	SpeedControllerGroup L,R;
+
+	Compressor c = new Compressor(1);
+	boolean pressureSwitch = c.getPressureSwitchValue(); 
+	
 	// Spark LF, LB;
 	// Victor RF, RB, LF, LB;//, iL, iR;
 	//Spark iL, iR;// , iRF, iRB;
@@ -64,7 +69,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	static final double kF = 0.00;
 
 
-	turnPID turner= new turnPID(kP,kI,kD);
+	//turnPID turner= new turnPID(kP,kI,kD);
 	static final double kToleranceDegrees = 2.0f;
 
 	static final double kTargetAngleDegrees = -90.0f;
@@ -98,26 +103,30 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		camera.setResolution(320, 240);
 		camera.setFPS(30);
 
-		LF = new Spark(4);
-		LB = new Spark(3);
-		RF = new Spark(2);
-		RB = new Spark(1);
+		LF = new Victor(14);
+		LB = new Victor(15);
+		RF = new Victor(13);
+		RB = new Victor(12);
 		R = new SpeedControllerGroup(RF,RB);
 		L = new SpeedControllerGroup(LF,LB);
-		// LF = new Victor(2);
-		// LB = new Victor(3);
-		// RF = new Victor(1);
-		// RB = new Victor(0);
-	//	flip = new Spark(6);
 
-	//	iL = new Spark(5);
-	//	iR = new Spark(0);
+		arm = new Spark(0);
+		intakeMotor = new Victor(1);
+
+		//	flip = new Spark(6);
+
+		//	iL = new Spark(5);
+		//	iR = new Spark(0);
 
 		LF.enableDeadbandElimination(true);
 		LB.enableDeadbandElimination(true);
 		RF.enableDeadbandElimination(true);
 		RB.enableDeadbandElimination(true);
-		flip.enableDeadbandElimination(true);
+
+		arm.enableDeadbandElimination(true);
+		intakeMotor.enableDeadbandElimination(true);
+
+		//flip.enableDeadbandElimination(true);
 	//	iL.enableDeadbandElimination(true);
 	//	iR.enableDeadbandElimination(true);
 		// iL = new Victor(2);
@@ -156,7 +165,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			 * Multiple navX-model devices on a single robot are supported.
 			 ************************************************************************/
 			ahrs = new AHRS(Port.kMXP);
-		} catch (RuntimeException ex) {
+		} 
+		catch (RuntimeException ex) {
 			DriverStation.reportError("Error instantiating navX MXP:  " + ex.getMessage(), true);
 		}
 
@@ -185,7 +195,6 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	 * switch structure below with additional strings. If using the SendableChooser
 	 * make sure to add them to the chooser code above as well.
 	 */
-
 
 	@Override
 	public void autonomousInit() {
@@ -250,23 +259,32 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	@Override
 	public void teleopInit() {
 		// TODO Auto-generated method stub
-		turner.turn(50);
+		//turner.turn(50);
 		super.teleopInit();
 	}
 	@Override
 	public void teleopPeriodic() {
-		System.out.println(turner.get());
+		//System.out.println(turner.get());
 		double left = (player2.getRawAxis(1) * -1); // *-1 to inverse left side | left_stick_y
 		double right = (player2.getRawAxis(5) * 1); // right_stick_y
 
 		double turn = (player2.getRawAxis(1) * -.5); // left stick y
 		double power = (player2.getRawAxis(4) * .5); // right stick x
 
-		double lift = (player1.getRawAxis(5) * .35);
+		double lift = (player1.getRawAxis(4) * .7);	//arm lift
+		double intake = (player1.getRawAxis(3) * .1);
+		double outtake = (player1.getRawAxis(2) * .3);
 
-		double intake = (player1.getRawAxis(3) * .44);
-		double outtake = (player1.getRawAxis(2) * 1);
-		double adjust = (player1.getRawAxis(1) * .15);
+		if(pressureSwitch == true){			//if pressure is low
+			c.start();						//start compressor
+		}
+		else if(pressureSwitch == false){	//if pressure is not low
+			c.stop();						//stop compressor
+		}
+		else{
+			c.stop();
+		}
+
 
 		// double turbo = (player1.getRawAxis(2) * 1);
 		/*
@@ -295,6 +313,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		}
 		flip.set(lift);
 		*/
+
+		//the following conditionals change drive mode (driveToggle)
 		boolean backPressed = (player2.getRawButton(7)); // select/back buttonm
 		if (backPressed && driveToggle == false) {
 			driveToggle = true;
@@ -364,6 +384,19 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			ahrs.zeroYaw();
 		} else if (player2.getRawButton(2)) {
 		}
+
+		if (intake > .3){
+			intakeMotor.set(.44);
+
+		}
+		else if (outtake > .3){
+			intakeMotor.set(-.44);
+		}
+		else{
+			intakeMotor.set(0);
+		}
+		
+		arm.set(lift);
 	}
 
 	/**
