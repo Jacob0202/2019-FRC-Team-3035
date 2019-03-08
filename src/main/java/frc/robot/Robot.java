@@ -49,8 +49,23 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	Spark arm;
 	SpeedControllerGroup L,R;
 
-	Compressor c = new Compressor(1);
+	Compressor c = new Compressor(1);					//pass the PCM Node ID 
 	boolean pressureSwitch = c.getPressureSwitchValue(); 
+	DoubleSolenoid armSolenoid_1;
+	DoubleSolenoid armSolenoid_2;
+	DoubleSolenoid liftSolenoid_1;
+	DoubleSolenoid lifeSolenoid_2;
+	/*
+	Solenoid notes
+	---------------
+	exampleDouble = new DoubleSolenoid(1,2);				//(moduleNumber, forwardChannel, reverseChannel)
+	exampleDouble = new DoubleSolenoid (1,1,2);				//
+
+	exampleDouble.set(DoubleSolenoid.Value.kOff) 			//puts solenoid in neutral position
+	exampleDouble.set(DoubleSolenoid.Value.kForward)		//forward channel enabled
+	exampleDouble.set(DoubleSolenoid.Value.kReverse)		//reverse channel enabled
+	**just noticed that this is from an archived article form 2014 so it might not be up to date**
+	*/
 	
 	// Spark LF, LB;
 	// Victor RF, RB, LF, LB;//, iL, iR;
@@ -113,8 +128,19 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		arm = new Spark(0);
 		intakeMotor = new Victor(1);
 
-		//	flip = new Spark(6);
+		c.setClosedLoopControl(false);				//automatically will keep pressure ~120 psi when true
+		//exampleSolenoid = new DoubleSolenoid(power number, forward, reverse)
+		armSolenoid_1 = new DoubleSolenoid(0, 0, 1);
+		armSolenoid_2 = new DoubleSolenoid(0, 2, 3);
+		liftSolenoid_1 = new DoubleSolenoid(0, 4, 5);
+		lifeSolenoid_2 = new DoubleSolenoid(0, 6, 7);
+		armSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		armSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		liftSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		lifeSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		
 
+		//	flip = new Spark(6);
 		//	iL = new Spark(5);
 		//	iR = new Spark(0);
 
@@ -127,8 +153,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		intakeMotor.enableDeadbandElimination(true);
 
 		//flip.enableDeadbandElimination(true);
-	//	iL.enableDeadbandElimination(true);
-	//	iR.enableDeadbandElimination(true);
+		//	iL.enableDeadbandElimination(true);
+		//	iR.enableDeadbandElimination(true);
 		// iL = new Victor(2);
 		// iR = new Victor(3);
 		/*
@@ -233,9 +259,15 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			default:
 				
 				if (timer.get() < 1.3) {
-					driveStraight(0.5, 1);
+					driveStraight(0.5, 1, 0);
 				}
-
+				else if (timer.get() > 1.4){
+					//turn 45 degrees
+					turn(45, 0.2);
+					
+					//turn -45 degrees
+					turn(-45, 0.2);
+				}
 				else if (timer.get() > 3 && timer.get() < 15) {
 					RB.set(0);
 					RF.set(0);
@@ -284,6 +316,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		else{
 			c.stop();
 		}
+
+		
 
 
 		// double turbo = (player1.getRawAxis(2) * 1);
@@ -385,9 +419,9 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		} else if (player2.getRawButton(2)) {
 		}
 
+		//ball in/outake controls
 		if (intake > .3){
 			intakeMotor.set(.44);
-
 		}
 		else if (outtake > .3){
 			intakeMotor.set(-.44);
@@ -396,7 +430,19 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			intakeMotor.set(0);
 		}
 		
+		//arm controls
 		arm.set(lift);
+
+		//pneumatic controls
+		if (player1.getRawButton(7)){
+			//hatch panel arm solenoids
+			
+		}
+		else if (player2.getRawButton(5)){
+			//lift arm solenoids
+			
+		}
+
 	}
 
 	/**
@@ -405,6 +451,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	@Override
 	public void testPeriodic() {
+
+		driveStraight(0.5, 1, 0);
 
 	}
 	/* Standard tank drive, no driver assistance. */
@@ -462,7 +510,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	}
 
-	public void driveStraight(double speed) {
+	public void driveStraight1(double speed) {
 		double leftSpeed;
 		double rightSpeed;
 
@@ -484,13 +532,13 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	}
 
-	public void driveStraight(double speed, int direction) {
+	public void driveStraight(double speed, int direction, int target) {
 		
 		double leftSpeed = 0;
 		double rightSpeed = 0;
 
 		double currentPos = ahrs.getYaw();
-		target = 0;
+		//target = 0;
 
 		if (direction == 1) {
 			leftSpeed = 0.55 - (currentPos - target) / 100;
