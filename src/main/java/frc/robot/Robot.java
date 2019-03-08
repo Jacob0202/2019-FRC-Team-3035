@@ -46,6 +46,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	Victor LF, LB, RF, RB;
 	Victor intakeMotor;
+	Victor liftL, liftR;
 	Spark arm;
 	SpeedControllerGroup L,R;
 
@@ -54,7 +55,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	DoubleSolenoid armSolenoid_1;
 	DoubleSolenoid armSolenoid_2;
 	DoubleSolenoid liftSolenoid_1;
-	DoubleSolenoid lifeSolenoid_2;
+	DoubleSolenoid liftSolenoid_2;
 	/*
 	Solenoid notes
 	---------------
@@ -122,6 +123,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		LB = new Victor(15);
 		RF = new Victor(13);
 		RB = new Victor(12);
+		liftL = new Victor(2);
+		liftR = new Victor(3);
 		R = new SpeedControllerGroup(RF,RB);
 		L = new SpeedControllerGroup(LF,LB);
 
@@ -133,11 +136,11 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		armSolenoid_1 = new DoubleSolenoid(0, 0, 1);
 		armSolenoid_2 = new DoubleSolenoid(0, 2, 3);
 		liftSolenoid_1 = new DoubleSolenoid(0, 4, 5);
-		lifeSolenoid_2 = new DoubleSolenoid(0, 6, 7);
+		liftSolenoid_2 = new DoubleSolenoid(0, 6, 7);
 		armSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		armSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		liftSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
-		lifeSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		liftSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		
 
 		//	flip = new Spark(6);
@@ -301,7 +304,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		double right = (player2.getRawAxis(5) * 1); // right_stick_y
 
 		double turn = (player2.getRawAxis(1) * -.5); // left stick y
-		double power = (player2.getRawAxis(4) * .5); // right stick x
+		double power = (player2.getRawAxis(4) * .5); // right stick 
 
 		double lift = (player1.getRawAxis(4) * .7);	//arm lift
 		double intake = (player1.getRawAxis(3) * .1);
@@ -315,6 +318,19 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		}
 		else{
 			c.stop();
+		}
+
+		if(player2.getRawButton(10)){
+			liftL.set(left * 0.5);
+			liftR.set(right * 0.5);
+		} 
+		else if(player2.getRawButton(9)){
+			liftL.set(0);
+			liftR.set(0);
+		}
+		else{
+			liftL.set(0);
+			liftR.set(0);
 		}
 
 		
@@ -434,13 +450,31 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		arm.set(lift);
 
 		//pneumatic controls
-		if (player1.getRawButton(7)){
+		//-------------------
+		//deploy hatch panel
+		if (player1.getRawButton(4)){
 			//hatch panel arm solenoids
-			
+			armSolenoid_1.set(DoubleSolenoid.Value.kForward);
+			armSolenoid_2.set(DoubleSolenoid.Value.kForward);
 		}
-		else if (player2.getRawButton(5)){
-			//lift arm solenoids
-			
+		//retract hatch panel
+		else if (player1.getRawButton(1)){
+			armSolenoid_1.set(DoubleSolenoid.Value.kReverse);
+			armSolenoid_2.set(DoubleSolenoid.Value.kReverse);
+		}
+
+		//deploy lift robot
+		if (player1.getRawButton(3)){
+			//lift solenoids
+			//exampleDouble.set(DoubleSolenoid.Value.kOff/kForward/kReverse);
+			//
+			liftSolenoid_1.set(DoubleSolenoid.Value.kForward);
+			liftSolenoid_2.set(DoubleSolenoid.Value.kForward);
+		}
+		//retract lift
+		else if (player1.getRawButton(2)){
+			liftSolenoid_1.set(DoubleSolenoid.Value.kReverse);
+			liftSolenoid_2.set(DoubleSolenoid.Value.kReverse);			
 		}
 
 	}
