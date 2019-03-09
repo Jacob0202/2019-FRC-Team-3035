@@ -44,18 +44,19 @@ public class Robot extends IterativeRobot implements PIDOutput {
 						// alliance
 	AHRS ahrs;
 
-	Victor LF, LB, RF, RB;
-	Victor intakeMotor;
-	Victor liftL, liftR;
+	Spark LF, LB, RF, RB;
+	Spark intakeMotor;
+	Spark liftL, liftR;
 	Spark arm;
 	SpeedControllerGroup L,R;
 
 	Compressor c = new Compressor(1);					//pass the PCM Node ID 
 	boolean pressureSwitch = c.getPressureSwitchValue(); 
-	DoubleSolenoid armSolenoid_1;
-	DoubleSolenoid armSolenoid_2;
+	//DoubleSolenoid armSolenoid_1;
+	//DoubleSolenoid armSolenoid_2;
 	DoubleSolenoid liftSolenoid_1;
 	DoubleSolenoid liftSolenoid_2;
+	DoubleSolenoid cSolenoid;
 	/*
 	Solenoid notes
 	---------------
@@ -119,26 +120,27 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		camera.setResolution(320, 240);
 		camera.setFPS(30);
 
-		LF = new Victor(14);
-		LB = new Victor(15);
-		RF = new Victor(13);
-		RB = new Victor(12);
-		liftL = new Victor(2);
-		liftR = new Victor(3);
+		LF = new Spark(6);
+		LB = new Spark(5);
+		RF = new Spark(8);
+		RB = new Spark(7);
+		liftL = new Spark(1);
+		liftR = new Spark(0);
 		R = new SpeedControllerGroup(RF,RB);
 		L = new SpeedControllerGroup(LF,LB);
 
 		arm = new Spark(0);
-		intakeMotor = new Victor(1);
+		intakeMotor = new Spark(2);
 
 		c.setClosedLoopControl(false);				//automatically will keep pressure ~120 psi when true
 		//exampleSolenoid = new DoubleSolenoid(power number, forward, reverse)
-		armSolenoid_1 = new DoubleSolenoid(0, 0, 1);
-		armSolenoid_2 = new DoubleSolenoid(0, 2, 3);
-		liftSolenoid_1 = new DoubleSolenoid(0, 4, 5);
-		liftSolenoid_2 = new DoubleSolenoid(0, 6, 7);
-		armSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
-		armSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		//armSolenoid_1 = new DoubleSolenoid(0, 0, 1);
+		//armSolenoid_2 = new DoubleSolenoid(0, 2, 3);
+		liftSolenoid_1 = new DoubleSolenoid(0, 7,6);
+		liftSolenoid_2 = new DoubleSolenoid(0, 2,3);
+		cSolenoid = new DoubleSolenoid(0, 0, 1);
+		//armSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		//armSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		liftSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		liftSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		
@@ -264,12 +266,12 @@ public class Robot extends IterativeRobot implements PIDOutput {
 				if (timer.get() < 1.3) {
 					driveStraight(0.5, 1, 0);
 				}
-				else if (timer.get() > 1.4){
+				else if (timer.get() > 1.4 && timer.get() <= 3){
 					//turn 45 degrees
 					turn(45, 0.2);
 					
 					//turn -45 degrees
-					turn(-45, 0.2);
+					//turn(-45, 0.2); right side of field
 				}
 				else if (timer.get() > 3 && timer.get() < 15) {
 					RB.set(0);
@@ -301,16 +303,16 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	public void teleopPeriodic() {
 		//System.out.println(turner.get());
 		double left = (player2.getRawAxis(1) * -1); // *-1 to inverse left side | left_stick_y
-		double right = (player2.getRawAxis(5) * 1); // right_stick_y
+		double right = (player2.getRawAxis(1) * 1); // right_stick_y
 
 		double turn = (player2.getRawAxis(1) * -.5); // left stick y
-		double power = (player2.getRawAxis(4) * .5); // right stick 
+		//double power = (player2.getRawAxis(4) * .5); // right stick 
 
-		double lift = (player1.getRawAxis(4) * .7);	//arm lift
-		double intake = (player1.getRawAxis(3) * .1);
-		double outtake = (player1.getRawAxis(2) * .3);
+		double lift = (player1.getRawAxis(5) * .7);	//arm lift
+		double intaker = (player1.getRawAxis(3) * .1);
+		double outtake = (player1.getRawAxis(2) * -.3);
 
-		if(pressureSwitch == true){			//if pressure is low
+		/*if(pressureSwitch == true){			//if pressure is low
 			c.start();						//start compressor
 		}
 		else if(pressureSwitch == false){	//if pressure is not low
@@ -318,20 +320,24 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		}
 		else{
 			c.stop();
-		}
+		}*/
 
-		if(player2.getRawButton(10)){
-			liftL.set(left * 0.5);
-			liftR.set(right * 0.5);
-		} 
-		else if(player2.getRawButton(9)){
-			liftL.set(0);
-			liftR.set(0);
-		}
-		else{
-			liftL.set(0);
-			liftR.set(0);
-		}
+		liftL.set(lift);
+		liftR.set(-lift);
+
+		RF.set(right);
+		RB.set(right);
+		LF.set(left);
+		LB.set(left);
+
+		RF.set(turn);
+		RB.set(turn);
+		LF.set(-turn);
+		LB.set(-turn);
+
+		intakeMotor.set(outtake);
+		intakeMotor.set(intaker);
+
 
 		
 
@@ -365,31 +371,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		*/
 
 		//the following conditionals change drive mode (driveToggle)
-		boolean backPressed = (player2.getRawButton(7)); // select/back buttonm
-		if (backPressed && driveToggle == false) {
-			driveToggle = true;
-		}
-
-		else if (backPressed && driveToggle == true) {
-			driveToggle = false;
-		}
-
-		if (driveToggle == false) {
-			LF.set(power + turn);
-			LB.set(power + turn);
-
-			RF.set(power - turn);
-			RB.set(power - turn);
-		}
-
-		else {
-			LF.set(left);
-			LB.set(left);
-
-			RF.set(right);
-			RB.set(right);
-			driveLastPass = backPressed;
-		}
+		
 		if (player2.getRawButton(1)) {
 			/*
 			 * While this button is held down, rotate to target angle. Since a Tank drive
@@ -436,15 +418,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		}
 
 		//ball in/outake controls
-		if (intake > .3){
-			intakeMotor.set(.44);
-		}
-		else if (outtake > .3){
-			intakeMotor.set(-.44);
-		}
-		else{
-			intakeMotor.set(0);
-		}
+		
 		
 		//arm controls
 		arm.set(lift);
@@ -452,7 +426,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		//pneumatic controls
 		//-------------------
 		//deploy hatch panel
-		if (player1.getRawButton(4)){
+		/*if (player1.getRawButton(4)){
 			//hatch panel arm solenoids
 			armSolenoid_1.set(DoubleSolenoid.Value.kForward);
 			armSolenoid_2.set(DoubleSolenoid.Value.kForward);
@@ -461,6 +435,9 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		else if (player1.getRawButton(1)){
 			armSolenoid_1.set(DoubleSolenoid.Value.kReverse);
 			armSolenoid_2.set(DoubleSolenoid.Value.kReverse);
+		}*/
+		if(player1.getRawButton(1)){
+			cSolenoid.set(DoubleSolenoid.Value.kOff);
 		}
 
 		//deploy lift robot
