@@ -46,17 +46,22 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	Spark LF, LB, RF, RB;
 	Spark intakeMotor;
+	Spark hRight, hLeft;
 	Spark liftL, liftR;
 	Spark arm;
 	SpeedControllerGroup L,R;
 
-	Compressor c = new Compressor(1);					//pass the PCM Node ID 
+	Compressor c = new Compressor();					//pass the PCM Node ID 
 	boolean pressureSwitch = c.getPressureSwitchValue(); 
 	//DoubleSolenoid armSolenoid_1;
 	//DoubleSolenoid armSolenoid_2;
-	DoubleSolenoid liftSolenoid_1;
-	DoubleSolenoid liftSolenoid_2;
-	DoubleSolenoid cSolenoid;
+	//DoubleSolenoid liftSolenoid_1;
+	//DoubleSolenoid liftSolenoid_2;
+	//DoubleSolenoid cSolenoid;
+
+	DoubleSolenoid hatchSolenoid;
+	DoubleSolenoid doubleLiftSolenoid;
+
 	/*
 	Solenoid notes
 	---------------
@@ -124,25 +129,40 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		LB = new Spark(5);
 		RF = new Spark(8);
 		RB = new Spark(7);
+		hRight = new Spark(4);
+		hLeft = new Spark(3);
 		liftL = new Spark(1);
 		liftR = new Spark(0);
-		R = new SpeedControllerGroup(RF,RB);
-		L = new SpeedControllerGroup(LF,LB);
+		
 
-		arm = new Spark(0);
+		//arm = new Spark(0);
 		intakeMotor = new Spark(2);
 
-		c.setClosedLoopControl(false);				//automatically will keep pressure ~120 psi when true
+		c.setClosedLoopControl(true);				//automatically will keep pressure ~120 psi when true
+ 
+		hatchSolenoid = new DoubleSolenoid(2, 3);				//solenoid that controls the left piston
+		hatchSolenoid.set(DoubleSolenoid.Value.kForward);						//intialize to off
+
+		doubleLiftSolenoid = new DoubleSolenoid(0, 1);		//solenoid that controls the right piston
+		doubleLiftSolenoid.set(DoubleSolenoid.Value.kReverse);//initialize to retract
+
 		//exampleSolenoid = new DoubleSolenoid(power number, forward, reverse)
 		//armSolenoid_1 = new DoubleSolenoid(0, 0, 1);
-		//armSolenoid_2 = new DoubleSolenoid(0, 2, 3);
-		liftSolenoid_1 = new DoubleSolenoid(0, 7,6);
-		liftSolenoid_2 = new DoubleSolenoid(0, 2,3);
-		cSolenoid = new DoubleSolenoid(0, 0, 1);
+		//armSolenoid_2 = new DoubleSolenoid(0, 2, 3);bbj`
+
+		/*
+		liftSolenoid_1 = new DoubleSolenoid(0, 7, 6);	// it needs to be (0,6,7) to be correct with forward/reversec3=
+		liftSolenoid_2 = new DoubleSolenoid(0, 2, 3);
+
+		liftSolenoid_1.set(DoubleSolenoid.Value.kForward); //prob wrong wiring
+		liftSolenoid_2.set(DoubleSolenoid.Value.kReverse);
+		*/
+
+		//cSolenoid = new DoubleSolenoid(0, 0, 1);
 		//armSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		//armSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
-		liftSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
-		liftSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		//liftSolenoid_1.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
+		//liftSolenoid_2.set(DoubleSolenoid.Value.kOff);	//initalize solenoid to neutral position
 		
 
 		//	flip = new Spark(6);
@@ -154,7 +174,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		RF.enableDeadbandElimination(true);
 		RB.enableDeadbandElimination(true);
 
-		arm.enableDeadbandElimination(true);
+		//arm.enableDeadbandElimination(true);
 		intakeMotor.enableDeadbandElimination(true);
 
 		//flip.enableDeadbandElimination(true);
@@ -227,64 +247,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	 * make sure to add them to the chooser code above as well.
 	 */
 
-	@Override
-	public void autonomousInit() {
-
-		m_autoSelected = autoChooser.getSelected();
-
-		// autoSelected = SmartDashboard.getString("Auto Selector",
-		// defaultAuto);
-		gameData = DriverStation.getInstance().getGameSpecificMessage(); // to test, go onto
-		// driver station software and enter game datal
-
-		/*
-		 * if (gameData.charAt(0) == 'L') // or 'R'; 1 for scale, 2 for opposing switch
-		 * { leftSwitch = true; } else if (gameData.charAt(0) == 'R') { rightSwitch =
-		 * true; }
-		 */
-		turnController.disable();
-		timer.reset();
-		timer.start();
-		ahrs.zeroYaw();
-
-	}
-
-	/**
-	 * This function is called periodically during autonomous.
-	 */
-	@Override
-	public void autonomousPeriodic() {
-
-		// Scheduler.getInstance().run();
-
-		if (isAutonomous() && isEnabled()) {
-			switch (m_autoSelected) {
-
-			case kDefaultAuto:
-			default:
-				
-				if (timer.get() < 1.3) {
-					driveStraight(0.5, 1, 0);
-				}
-				else if (timer.get() > 1.4 && timer.get() <= 3){
-					//turn 45 degrees
-					turn(45, 0.2);
-					
-					//turn -45 degrees
-					//turn(-45, 0.2); right side of field
-				}
-				else if (timer.get() > 3 && timer.get() < 15) {
-					RB.set(0);
-					RF.set(0);
-					LF.set(0);
-					LB.set(0);
-					timer.stop();
-				}
-				
-				break;
-			}
-		}
-	}
+	
+	
 
 	/**
 	 * This function is called periodically during operator control.
@@ -300,17 +264,25 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		super.teleopInit();
 	}
 	@Override
-	public void teleopPeriodic() {
+	public void robotPeriodic() {
 		//System.out.println(turner.get());
-		double left = (player2.getRawAxis(1) * -1); // *-1 to inverse left side | left_stick_y
-		double right = (player2.getRawAxis(1) * 1); // right_stick_y
 
-		double turn = (player2.getRawAxis(1) * -.5); // left stick y
+		//left and right wheels
+		double left = (player2.getRawAxis(1) * 1); // *-1 to inverse left side | left_stick_y
+		double right = (player2.getRawAxis(1)); // right_stick_y
+
+		double turn = (player2.getRawAxis(4) * -.5); // left stick y
 		//double power = (player2.getRawAxis(4) * .5); // right stick 
 
-		double lift = (player1.getRawAxis(5) * .7);	//arm lift
-		double intaker = (player1.getRawAxis(3) * .1);
-		double outtake = (player1.getRawAxis(2) * -.3);
+		double lift = (player1.getRawAxis(5) * 1);	//arm lift control
+		//double intaker = (player1.getRawAxis(3) * .7);
+		//double outtake = (player1.getRawAxis(2) * -.7);
+		double lol = (player1.getRawAxis(1) * .7);	//intake motor control
+
+		double hlPower = (player2.getRawAxis(3) * .7);
+		double hrPower = (player2.getRawAxis(2) * .7);
+
+		double linear = (player2.getRawAxis(1));
 
 		/*if(pressureSwitch == true){			//if pressure is low
 			c.start();						//start compressor
@@ -327,21 +299,24 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		RF.set(right);
 		RB.set(right);
-		LF.set(left);
-		LB.set(left);
+		LF.set(-left);
+		LB.set(-left);
 
 		RF.set(turn);
 		RB.set(turn);
-		LF.set(-turn);
-		LB.set(-turn);
+		LF.set(turn);
+		LB.set(turn);
 
-		intakeMotor.set(outtake);
-		intakeMotor.set(intaker);
-
+		hRight.set(hrPower);
+		hLeft.set(-hlPower);
 
 		
+		intakeMotor.set(lol);
+
+		//if(pressureSwitch.getPressureSwitchValue() ){}
 
 
+	
 		// double turbo = (player1.getRawAxis(2) * 1);
 		/*
 		if (player1.getRawButton(6)) {
@@ -421,7 +396,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		
 		
 		//arm controls
-		arm.set(lift);
+		//arm.set(lift);
 
 		//pneumatic controls
 		//-------------------
@@ -436,10 +411,13 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			armSolenoid_1.set(DoubleSolenoid.Value.kReverse);
 			armSolenoid_2.set(DoubleSolenoid.Value.kReverse);
 		}*/
+		/*
 		if(player1.getRawButton(1)){
 			cSolenoid.set(DoubleSolenoid.Value.kOff);
 		}
+		*/
 
+		/*
 		//deploy lift robot
 		if (player1.getRawButton(3)){
 			//lift solenoids
@@ -452,6 +430,26 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		else if (player1.getRawButton(2)){
 			liftSolenoid_1.set(DoubleSolenoid.Value.kReverse);
 			liftSolenoid_2.set(DoubleSolenoid.Value.kReverse);			
+		}
+		*/
+
+		//new deploy & retract lift robot
+		if (player1.getRawButton(3)){
+			//singleLiftSolenoid.set(true);							//extends left piston
+			doubleLiftSolenoid.set(DoubleSolenoid.Value.kForward);	//extends right piston (should)
+		}
+		else if (player1.getRawButton(2)){
+			//singleLiftSolenoid.set(false);							//retracts left piston
+			doubleLiftSolenoid.set(DoubleSolenoid.Value.kReverse);	//retracts right piston
+		}
+
+		//deploy piston 
+		if(player1.getRawButton(1)){
+			hatchSolenoid.set(DoubleSolenoid.Value.kReverse);
+
+		}
+		else if(player1.getRawButton(4)){
+			hatchSolenoid.set(DoubleSolenoid.Value.kForward);
 		}
 
 	}
