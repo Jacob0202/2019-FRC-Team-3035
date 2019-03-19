@@ -268,13 +268,14 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		//System.out.println(turner.get());
 
 		//left and right wheels
-		double left = (player2.getRawAxis(1) * 1); // *-1 to inverse left side | left_stick_y
-		double right = (player2.getRawAxis(1)); // right_stick_y
+		//double left = (player2.getRawAxis(1) * 1); // *-1 to inverse left side | left_stick_y
 
-		double turn = (player2.getRawAxis(4) * -.5); // left stick y
-		//double power = (player2.getRawAxis(4) * .5); // right stick 
+		int counter = 1;
+		double x_axis = (player2.getRawAxis(4) * .5); // right_stick_y
 
-		double lift = (player1.getRawAxis(5) * 1);	//arm lift control
+		double y_axis = (player2.getRawAxis(1)); // left stick y
+		//double power = (player2.getRawAxis(4) * .5ouble 
+		double lift = (player1.getRawAxis(5) * .7);//arm lift control
 		//double intaker = (player1.getRawAxis(3) * .7);
 		//double outtake = (player1.getRawAxis(2) * -.7);
 		double lol = (player1.getRawAxis(1) * .7);	//intake motor control
@@ -282,7 +283,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		double hlPower = (player2.getRawAxis(3) * .7);
 		double hrPower = (player2.getRawAxis(2) * .7);
 
-		double linear = (player2.getRawAxis(1));
+		//double linear = (player2.getRawAxis(1));
 
 		/*if(pressureSwitch == true){			//if pressure is low
 			c.start();						//start compressor
@@ -297,21 +298,39 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		liftL.set(lift);
 		liftR.set(-lift);
 
-		RF.set(right);
-		RB.set(right);
-		LF.set(-left);
-		LB.set(-left);
+		RF.set(x_axis + y_axis);
+		RB.set(x_axis + y_axis);
+		LF.set(x_axis - y_axis);
+		LB.set(x_axis - y_axis);
 
-		RF.set(turn);
+		/*RF.set(turn);
 		RB.set(turn);
 		LF.set(turn);
-		LB.set(turn);
+		LB.set(turn);*/
 
 		hRight.set(hrPower);
 		hLeft.set(-hlPower);
 
 		
 		intakeMotor.set(lol);
+
+		if(player2.getRawButton(7) && player2.getRawButton(8)){
+				(x_axis) *= 0.3;
+				(y_axis) *= 0.3;
+		}
+		else {
+			(x_axis) *= 0.5;
+			(y_axis) *= 1;
+		}
+
+		if(player2.getRawButton(4)){
+			(x_axis) *= -1;
+			(y_axis) *= -1;
+			counter += 1;
+		}
+		else if(player2.getRawButton(4) && counter == 1){
+			(x_axis)
+		}
 
 		//if(pressureSwitch.getPressureSwitchValue() ){}
 
