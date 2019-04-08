@@ -2,6 +2,8 @@ package frc.robot;
 
 import org.opencv.video.KalmanFilter;
 
+import javax.lang.model.util.ElementScanner6;
+
 import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
@@ -17,8 +19,10 @@ import edu.wpi.first.wpilibj.SPI.Port;
 import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
+import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -49,6 +53,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	Spark hRight, hLeft;
 	Spark liftL, liftR;
 	Spark arm;
+	Spark pRight, pLeft;
 	SpeedControllerGroup L,R;
 
 	Compressor c = new Compressor();					//pass the PCM Node ID 
@@ -61,7 +66,11 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	DoubleSolenoid hatchSolenoid;
 	DoubleSolenoid doubleLiftSolenoid;
+	DoubleSolenoid defense;
 
+
+	boolean forward = true;
+	boolean speed = true;
 	/*
 	Solenoid notes
 	---------------
@@ -124,15 +133,22 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		camera.setResolution(320, 240);
 		camera.setFPS(30);
-
+		
+		//drive train motors
 		LF = new Spark(6);
 		LB = new Spark(5);
 		RF = new Spark(8);
 		RB = new Spark(7);
-		hRight = new Spark(4);
-		hLeft = new Spark(3);
-		liftL = new Spark(1);
+
+		//special motors (hatch and lift)
+		hRight = new Spark(9);
+		hLeft = new Spark(10);
+		liftL = new Spark(1);	//flippped port numbers 4-5-19 at 9:43
 		liftR = new Spark(0);
+
+		pRight = new Spark(3);
+		pLeft = new Spark(4);
+
 		
 
 		//arm = new Spark(0);
@@ -140,13 +156,17 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		c.setClosedLoopControl(true);				//automatically will keep pressure ~120 psi when true
  
-		hatchSolenoid = new DoubleSolenoid(2, 3);				//solenoid that controls the left piston
-		hatchSolenoid.set(DoubleSolenoid.Value.kForward);						//intialize to off
+		hatchSolenoid = new DoubleSolenoid(2, 3);				//solenoid that lifts hatch mechanism
+		hatchSolenoid.set(DoubleSolenoid.Value.kForward);						//intialize to extended
 
-		doubleLiftSolenoid = new DoubleSolenoid(0, 1);		//solenoid that controls the right piston
+		doubleLiftSolenoid = new DoubleSolenoid(0, 1);		//solenoid that lifts the robot
 		doubleLiftSolenoid.set(DoubleSolenoid.Value.kReverse);//initialize to retract
 
-		//exampleSolenoid = new DoubleSolenoid(power number, forward, reverse)
+		defense = new DoubleSolenoid(4, 5);				//needs to be (forward, reverse)
+		defense.set(DoubleSolenoid.Value.kForward);
+		
+
+		//exampleSolenoid = new DoubleSolenoid(power number, forward, reverse) 
 		//armSolenoid_1 = new DoubleSolenoid(0, 0, 1);
 		//armSolenoid_2 = new DoubleSolenoid(0, 2, 3);bbj`
 
@@ -270,18 +290,89 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		//left and right wheels
 		//double left = (player2.getRawAxis(1) * 1); // *-1 to inverse left side | left_stick_y
 
-		int counter = 1;
-		double x_axis = (player2.getRawAxis(4) * .5); // right_stick_y
+		
+		double invert = 1;				//default invert value
+		double speedController = 1;	//default speed value
+		boolean debounce = true;				//counter??
 
-		double y_axis = (player2.getRawAxis(1)); // left stick y
+		boolean debouncex = true;
+
+		
+
+		//double x_axis = (player2.getRawAxis(4) * xspeedController); // right_stick_y
+		double x_axis = (player2.getRawAxis(4) * speedController);
+
+		//double y_axis = (player2.getRawAxis(1) * invert); // left stick y
+		double y_axis = (player2.getRawAxis(1) * invert * speedController);
+
 		//double power = (player2.getRawAxis(4) * .5ouble 
-		double lift = (player1.getRawAxis(5) * .7);//arm lift control
+		double lift = (player1.getRawAxis(5));//arm lift control 
 		//double intaker = (player1.getRawAxis(3) * .7);
 		//double outtake = (player1.getRawAxis(2) * -.7);
-		double lol = (player1.getRawAxis(1) * .7);	//intake motor control
+		double lol = (player1.getRawAxis(1));	//intake motor control
 
-		double hlPower = (player2.getRawAxis(3) * .7);
-		double hrPower = (player2.getRawAxis(2) * .7);
+		//double hab3 = (player2.getRawAxis(1));
+
+		double hPower = (player1.getRawAxis(0) * .8);
+		//double hrPower = (player2.getRawAxis(2) * .8);
+
+		double hab3 = (player1.getRawAxis(4));
+
+		//boolean fast = true;
+		//boolean forward = true;
+
+		//The following is used to toggle inverted drive controls
+		/*if(player2.getRawButtonPressed(1) && debounce){
+				forward = !forward;
+				debounce = false;							//debounce is a variable that the orange hat created to 
+															//control the conditionals. It makes it so that
+				System.out.println("Button pressed");
+		}
+		SmartDashboard.putString("Direction", forward ? "Forward" : "Reverse");
+
+		//tbh I (Jacob) doesn't think the following if statement should be necessary, but testing is required
+		if(!player2.getRawButtonPressed(1) && !debounce){	//if the button has not been pressed since last check (presumably a set amout of time),
+			debounce = true;								//then the control variable (debounce) will be reset so that the above if statement
+			System.out.println("Button released");			//can flip the forward variable again upon a second button press
+		}
+
+		if(forward){
+			invert = 1;
+			y_axis = (player2.getRawAxis(1) * invert * speedController);
+		}
+		else if(!forward){
+			invert = -1;
+			y_axis = (player2.getRawAxis(1) * invert * speedController);
+		}*/
+		
+
+		//The following is used to toggle slow mode
+		//it is a mirror image of the invert driver control conditionals directly above
+		if(player2.getRawButtonPressed(3) && debouncex){	//
+				speed = !speed;
+				debouncex = false;
+		}
+		SmartDashboard.putString("Speed", speed ? "I am speed" : "Mater");
+		if(!player2.getRawButtonPressed(3) && !debouncex){
+			debouncex = true;
+		}
+
+		if(speed){
+			speedController = 1;
+			x_axis = (player2.getRawAxis(4) * speedController);
+			y_axis = (player2.getRawAxis(1) * invert * speedController);
+			
+		}
+		else if(!speed){
+			speedController = 0.3;
+			x_axis = player2.getRawAxis(4) * speedController;
+			y_axis = player2.getRawAxis(1) * invert * speedController;
+		}
+
+
+	
+
+
 
 		//double linear = (player2.getRawAxis(1));
 
@@ -291,47 +382,51 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		else if(pressureSwitch == false){	//if pressure is not low
 			c.stop();						//stop compressor
 		}
-		else{
+		else{ 3b8 hi
 			c.stop();
 		}*/
 
-		liftL.set(lift);
-		liftR.set(-lift);
+		liftL.set(-lift);
+		liftR.set(lift);
 
 		RF.set(x_axis + y_axis);
 		RB.set(x_axis + y_axis);
 		LF.set(x_axis - y_axis);
 		LB.set(x_axis - y_axis);
 
+		
+
 		/*RF.set(turn);
 		RB.set(turn);
 		LF.set(turn);
 		LB.set(turn);*/
 
-		hRight.set(hrPower);
-		hLeft.set(-hlPower);
+		hRight.set(-hPower);
+		hLeft.set(hPower);
+
+		pRight.set(x_axis + y_axis);
+		pLeft.set(x_axis - y_axis);
 
 		
 		intakeMotor.set(lol);
 
-		if(player2.getRawButton(7) && player2.getRawButton(8)){
-				(x_axis) *= 0.3;
-				(y_axis) *= 0.3;
+		if(Math.abs(hPower) < 0.2){
+			hLeft.set(0);
+			hRight.set(0);
 		}
-		else {
-			(x_axis) *= 0.5;
-			(y_axis) *= 1;
-		}
-
-		if(player2.getRawButton(4)){
-			(x_axis) *= -1;
-			(y_axis) *= -1;
-			counter += 1;
-		}
-		else if(player2.getRawButton(4) && counter == 1){
-			(x_axis)
+		else
+		{
+			hRight.set(hPower);
+			hLeft.set(-hPower);	
 		}
 
+		if((lol) < -0.71){
+			intakeMotor.set(-0.7);
+		}
+		else
+		{
+			intakeMotor.set(lol);
+		}
 		//if(pressureSwitch.getPressureSwitchValue() ){}
 
 
@@ -366,50 +461,23 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		//the following conditionals change drive mode (driveToggle)
 		
-		if (player2.getRawButton(1)) {
-			/*
-			 * While this button is held down, rotate to target angle. Since a Tank drive
-			 * system cannot move forward simultaneously while rotating, all joystick input
-			 * is ignored until this button is released.
-			 */
-			if (!turnController.isEnabled()) {
-				turnController.setSetpoint(kTargetAngleDegrees);
-				rotateToAngleRate = 0; // This value will be updated in the pidWrite() method.
-				turnController.enable();
-			}
-			double leftStickValue = rotateToAngleRate;
-			double rightStickValue = rotateToAngleRate;
+		/*
+		if(player2.getRawButton(4)){
+			invert = 1;
 
-			LF.set(leftStickValue * 0.5);
-			LB.set(leftStickValue * 0.5);
-
-			RF.set(rightStickValue * 0.5);
-			RB.set(rightStickValue * 0.5);
-
-			if (Math.abs(ahrs.getAngle() - kTargetAngleDegrees) <= 3) {
-				LF.set(leftStickValue * 0.1);
-				LB.set(leftStickValue * 0.1);
-
-				RF.set(rightStickValue * 0.1);
-				RB.set(rightStickValue * 0.1);
-			}
-
-			else {
-				LF.set(leftStickValue * 0.5);
-				LB.set(leftStickValue * 0.5);
-
-				RF.set(rightStickValue * 0.5);
-				RB.set(rightStickValue * 0.5);
-			}
-
-		} else if (player2.getRawButton(3)) {
-			/*
-			 * "Zero" the yaw (whatever direction the sensor is pointing now will become the
-			 * new "Zero" degrees.
-			 */
-			ahrs.zeroYaw();
-		} else if (player2.getRawButton(2)) {
+		}else if(player2.getRawButton(1)){
+			invert = -1;
 		}
+
+		if(player2.getRawButton(3)){
+			invert = 0.3;
+			xspeedController = 0.3;
+		}else if(player2.getRawButton(2)){
+			invert = 1;
+			xspeedController = 0.5;
+		}
+		*/
+		
 
 		//ball in/outake controls
 		
@@ -452,17 +520,20 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		}
 		*/
 
-		//new deploy & retract lift robot
+		//new deploy lift robot
 		if (player1.getRawButton(3)){
 			//singleLiftSolenoid.set(true);							//extends left piston
-			doubleLiftSolenoid.set(DoubleSolenoid.Value.kForward);	//extends right piston (should)
+																	//extends right piston (should)
+			doubleLiftSolenoid.set(DoubleSolenoid.Value.kForward);
 		}
+		//new retract lift robot
 		else if (player1.getRawButton(2)){
 			//singleLiftSolenoid.set(false);							//retracts left piston
-			doubleLiftSolenoid.set(DoubleSolenoid.Value.kReverse);	//retracts right piston
+																		//retracts right piston
+			doubleLiftSolenoid.set(DoubleSolenoid.Value.kReverse);	
 		}
 
-		//deploy piston 
+		//retract and deploy hatch panel mechanism piston 
 		if(player1.getRawButton(1)){
 			hatchSolenoid.set(DoubleSolenoid.Value.kReverse);
 
@@ -471,6 +542,15 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			hatchSolenoid.set(DoubleSolenoid.Value.kForward);
 		}
 
+		
+		//defense controls
+		if(player1.getRawButton(6)){	//right bumper extend
+			defense.set(DoubleSolenoid.Value.kForward);
+		}
+		else if(player1.getRawButton(5)){	//left bumbper retract
+			defense.set(DoubleSolenoid.Value.kReverse);
+		}
+		
 	}
 
 	/**
