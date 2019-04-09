@@ -8,6 +8,7 @@ import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -66,8 +67,10 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	DoubleSolenoid hatchSolenoid;
 	DoubleSolenoid doubleLiftSolenoid;
-	DoubleSolenoid defense;
+	DoubleSolenoid defenseSolenoid;
 
+	DigitalInput limitSwitch1;
+	DigitalInput limitSwitch2;
 
 	boolean forward = true;
 	boolean speed = true;
@@ -162,8 +165,13 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		doubleLiftSolenoid = new DoubleSolenoid(0, 1);		//solenoid that lifts the robot
 		doubleLiftSolenoid.set(DoubleSolenoid.Value.kReverse);//initialize to retract
 
-		defense = new DoubleSolenoid(4, 5);				//needs to be (forward, reverse)
-		defense.set(DoubleSolenoid.Value.kForward);
+		defenseSolenoid = new DoubleSolenoid(4, 5);				//needs to be (forward, reverse)
+		defenseSolenoid.set(DoubleSolenoid.Value.kReverse);	
+		
+		limitSwitch1 = new DigitalInput(channel);	//(int channel)
+		limitSwitch2 = new DigitalInput(channel);
+
+
 		
 
 		//exampleSolenoid = new DoubleSolenoid(power number, forward, reverse) 
@@ -207,6 +215,10 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		 * Spark(6); lift = new Spark(5); ACTUAL
 		 */
 		timer = new Timer();
+		timer.reset();
+		timer.start();
+	
+
 		/*
 		 * compressor = new Compressor(0);
 		 * 
@@ -292,10 +304,12 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		
 		double invert = 1;				//default invert value
-		double speedController = 1;	//default speed value
-		boolean debounce = true;				//counter??
+		double speedController = 1;		//default speed value
+		boolean debounce = true;		//used in control inversion
 
-		boolean debouncex = true;
+		boolean debouncex = true;		//used in speed control
+		boolean lockArm = false;		//used in auto defense
+		double armStartTime = 0.0;		//used in auto defense to safeguard arm movement
 
 		
 
@@ -545,12 +559,43 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		
 		//defense controls
 		if(player1.getRawButton(6)){	//right bumper extend
-			defense.set(DoubleSolenoid.Value.kForward);
+			defenseSolenoid.set(DoubleSolenoid.Value.kForward);
 		}
 		else if(player1.getRawButton(5)){	//left bumbper retract
-			defense.set(DoubleSolenoid.Value.kReverse);
+			defenseSolenoid.set(DoubleSolenoid.Value.kReverse);
 		}
 		
+		/*
+		//-------------------
+		//limit switch code
+		//-------------------
+
+		//initiates lock sequence
+		if(player1.getRawButtonPressed(6)){
+			lockArm = true;				//toggles the lockArm proccess to begin
+			armStartTime = timer.get();	//holds the approximate engage time for control purposes
+		}
+
+		//while the engage button has been pressed and neither switches being pressed 
+		//and it hasn't been raising for too long (the difference of time since start)
+		if (lockArm && limitSwitch1.get() && limitSwitch2.get() && timer.get() - armStartTime < 8{
+			//lift arm at maximum speed
+			liftL.set(-1);	
+			liftR.set(1);
+		}
+		//if both switches are activated sometime after the button is pressed
+		else if (lockArm == true && !limitSwitch1.get() && !limitSwitch2.get()){
+			defenseSolenoid.set(DoubleSolenoid.Value.kForward);		//extend pistons
+			lockArm = false;										//resets the variable for next time
+		}
+
+		//if button is pressed and the switches are being engaged
+		//these swtich.get() conditionals probrably aren't necessary
+		if (player1.getRawButtonPressed(5) && !limitSwitch1.get() && !limitSwitch2.get()){
+			defenseSolenoid.set(DoubleSolenoid.Value.kReverse);	//retract solenoid without moving
+		}
+
+		*/
 	}
 
 	/**
